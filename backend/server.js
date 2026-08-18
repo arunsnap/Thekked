@@ -10,6 +10,44 @@ const productRoutes = require("./routes/products");
 
 const app = express();
 
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {
+        console.log("MongoDB connected");
+    })
+    .catch((error) => {
+        console.error("MongoDB connection error:", error);
+    });
+
+function authenticateAdmin(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).json({
+            success: false,
+            message: "Authentication required"
+        });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    try {
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET
+        );
+
+        req.admin = decoded;
+
+        next();
+
+    } catch (error) {
+        return res.status(401).json({
+            success: false,
+            message: "Invalid or expired token"
+        });
+    }
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -82,14 +120,6 @@ app.get("/admin.html", (req, res) => {
         path.join(__dirname, "..", "admin.html")
     );
 });
-
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => {
-        console.log("MongoDB connected");
-    })
-    .catch((error) => {
-        console.error("MongoDB connection error:", error);
-    });
 
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "..", "index.html"));
