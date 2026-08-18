@@ -1,14 +1,20 @@
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const path = require("path");
 
-
-const productRoutes = require("./routes/products");
+const productRoutes = require("./routes/product");
 
 const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+
+// ===============================
+// MongoDB Connection
+// ===============================
 
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => {
@@ -18,7 +24,13 @@ mongoose.connect(process.env.MONGODB_URI)
         console.error("MongoDB connection error:", error);
     });
 
+
+// ===============================
+// Admin Authentication
+// ===============================
+
 function authenticateAdmin(req, res, next) {
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
@@ -30,29 +42,45 @@ function authenticateAdmin(req, res, next) {
 
     const token = authHeader.split(" ")[1];
 
+    if (!token) {
+        return res.status(401).json({
+            success: false,
+            message: "Token missing"
+        });
+    }
+
     try {
+
         const decoded = jwt.verify(
             token,
             process.env.JWT_SECRET
         );
+
+        if (decoded.role !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Admin access required"
+            });
+        }
 
         req.admin = decoded;
 
         next();
 
     } catch (error) {
+
         return res.status(401).json({
             success: false,
             message: "Invalid or expired token"
         });
+
     }
 }
 
-app.use(cors());
-app.use(express.json());
 
-app.use(express.static(path.join(__dirname, "..")));
-app.use("/api/products", productRoutes);
+// ===============================
+// Admin Login
+// ===============================
 
 app.post("/api/admin/login", async (req, res) => {
 
@@ -106,80 +134,63 @@ app.post("/api/admin/login", async (req, res) => {
 
 });
 
-// Shopping website
+
+// ===============================
+// Product Routes
+// ===============================
+
+app.use("/api/products", productRoutes);
+
+
+// ===============================
+// Website
+// ===============================
+
+app.use(express.static(path.join(__dirname, "..")));
+
+
+// Home page
 app.get("/", (req, res) => {
+
     res.sendFile(
         path.join(__dirname, "..", "index.html")
     );
+
 });
 
 
-// Admin panel
+// Admin page
 app.get("/admin.html", (req, res) => {
+
     res.sendFile(
         path.join(__dirname, "..", "admin.html")
     );
+
 });
 
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "..", "index.html"));
-});
+
+// ===============================
+// Test API
+// ===============================
 
 app.get("/api/test", (req, res) => {
+
     res.json({
         success: true,
         message: "API connection working!"
     });
-});
-// Get products
-app.get("/api/products", async (req, res) => {
-    try {
 
-        const products = await Product.find();
-
-        res.json({
-            success: true,
-            products: products
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        res.status(500).json({
-            success: false,
-            message: "Failed to get products"
-        });
-    }
-});
-// Add product
-app.post("/api/products", authenticateAdmin, async (req, res) => {
-    try {
-
-        const product = new Product(req.body);
-
-        const savedProduct =
-            await product.save();
-
-        res.status(201).json({
-            success: true,
-            product: savedProduct
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        res.status(500).json({
-            success: false,
-            message: "Failed to add product"
-        });
-    }
 });
 
+
+// ===============================
+// Server
+// ===============================
 
 const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, "0.0.0.0", () => {
+
     console.log(`Server running on port ${PORT}`);
+
 });
