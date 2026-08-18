@@ -14,6 +14,21 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "..")));
 app.use("/api/products", productRoutes);
 
+// Shopping website
+app.get("/", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "..", "index.html")
+    );
+});
+
+
+// Admin panel
+app.get("/admin.html", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "..", "admin.html")
+    );
+});
+
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => {
         console.log("MongoDB connected");
@@ -23,10 +38,7 @@ mongoose.connect(process.env.MONGODB_URI)
     });
 
 app.get("/", (req, res) => {
-    res.json({
-        success: true,
-        message: "Shopping website backend is running!"
-    });
+    res.sendFile(path.join(__dirname, "..", "index.html"));
 });
 
 app.get("/api/test", (req, res) => {
@@ -35,6 +47,52 @@ app.get("/api/test", (req, res) => {
         message: "API connection working!"
     });
 });
+// Get products
+app.get("/api/products", async (req, res) => {
+    try {
+
+        const products = await Product.find();
+
+        res.json({
+            success: true,
+            products: products
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to get products"
+        });
+    }
+});
+// Add product
+app.post("/api/products", async (req, res) => {
+    try {
+
+        const product = new Product(req.body);
+
+        const savedProduct =
+            await product.save();
+
+        res.status(201).json({
+            success: true,
+            product: savedProduct
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to add product"
+        });
+    }
+});
+
 
 const PORT = process.env.PORT || 10000;
 
