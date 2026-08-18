@@ -153,7 +153,7 @@ app.get("/api/products", async (req, res) => {
     }
 });
 // Add product
-app.post("/api/products", async (req, res) => {
+app.post("/api/products", authenticateAdmin, async (req, res) => {
     try {
 
         const product = new Product(req.body);
