@@ -11,29 +11,7 @@ const orderRoutes = require("./routes/orders");
 
 const app = express();
 
-// ===============================
-// CORS Configuration
-// ===============================
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://127.0.0.1:5500", // Common for VS Code Live Server
-  "https://arunsnap.github.io",
-  "https://thekked.is-a.dev",
-  process.env.ALLOWED_ORIGIN
-].filter(Boolean);
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, or Postman)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error("CORS policy error: Origin not allowed"), false);
-  },
-  credentials: true
-}));
-
+app.use(cors());
 app.use(express.json());
 
 
