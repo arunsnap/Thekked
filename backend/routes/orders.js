@@ -7,10 +7,18 @@ const { authenticateUser } = require("../middleware/auth");
 
 const router = express.Router();
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+// Razorpay is optional for now — only created when actually needed, and only
+// if both keys are present. This means the rest of the site (browsing, auth,
+// admin panel, image upload) works fine even before Razorpay is set up.
+function getRazorpayInstance() {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        return null;
+    }
+    return new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+}
 
 // ===============================
 // CREATE RAZORPAY ORDER
@@ -18,6 +26,14 @@ const razorpay = new Razorpay({
 // ===============================
 router.post("/create", authenticateUser, async (req, res) => {
     try {
+        const razorpay = getRazorpayInstance();
+        if (!razorpay) {
+            return res.status(503).json({
+                success: false,
+                message: "Online payment isn't set up yet. Please check back soon."
+            });
+        }
+
         const { productIds } = req.body;
 
         if (!Array.isArray(productIds) || productIds.length === 0) {
@@ -81,6 +97,10 @@ router.post("/create", authenticateUser, async (req, res) => {
 // ===============================
 router.post("/verify", authenticateUser, async (req, res) => {
     try {
+        if (!process.env.RAZORPAY_KEY_SECRET) {
+            return res.status(503).json({ success: false, message: "Online payment isn't set up yet." });
+        }
+
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, shippingAddress } = req.body;
 
         if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
